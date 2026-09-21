@@ -853,8 +853,13 @@ Five things there are load-bearing:
   need `Depends: dotnet-runtime-10.0`, which lives only in Microsoft's apt repository, so
   `apt install ./…deb` would fail on a stock Debian. On Windows the runtime is a signed
   one-click installer, so a zip is about 12 MB rather than a bundled ~120 MB.
-- **The scripts are invoked as `bash script.sh`**, never executed directly, so the pipeline
-  does not depend on the executable bit surviving in git.
+- **The scripts are invoked as `bash script.sh`**, never executed directly, so nothing
+  depends on the executable bit surviving in git. **This applies inside the scripts too.**
+  `version.sh` called `check-version.sh` directly, and the first real GitHub run died with
+  `Permission denied` and exit 126: the repository is written from Windows, so a Linux
+  checkout gets mode 644. It never reproduced locally, because Git Bash treats everything as
+  executable. The `.sh` files are also marked `100755` in the index now, but the `bash`
+  prefix is the part that has to hold.
 - **Anything added to one pipeline belongs in `packaging/`, not in the YAML.** The two
   forges are meant to stay thin wrappers over the same scripts; logic that lives in only one
   of them is logic the other silently lacks.

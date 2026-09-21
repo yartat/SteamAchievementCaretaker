@@ -37,7 +37,10 @@ fi
 
 if [ -n "$tag" ]; then
     version="${tag#v}"
-    "$here/check-version.sh" "$version" >&2
+    # Invoked through bash, not executed: the repository is written from
+    # Windows, so these files arrive in a Linux checkout as mode 644 and a
+    # direct call dies with "Permission denied" and exit 126.
+    bash "$here/check-version.sh" "$version" >&2
 else
     build="${CI_PIPELINE_IID:-${GITHUB_RUN_NUMBER:-0}}"
     version="$(project_version)~dev${build}"

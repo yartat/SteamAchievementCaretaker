@@ -18,8 +18,11 @@
 # Everything is cross-built on ubuntu-latest; no Windows runner is needed.
 #
 # workflow_dispatch builds the same artifacts and uploads them as workflow
-# artifacts without creating a release, so the packaging can be exercised
-# without tagging.
+# artifacts, which is how to exercise the packaging without tagging - but note
+# it follows the ref it is dispatched against. From a branch it stops there;
+# dispatched against a tag, github.ref_type is 'tag' and the release job runs
+# and publishes. Add `github.event_name == 'push' &&` to that job's condition if
+# a dispatch should never be able to publish.
 
 name: Release
 

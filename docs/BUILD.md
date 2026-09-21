@@ -219,9 +219,10 @@ the debug symbols are stripped, and about 12 MB zipped.
 
 ### Building the packages without tagging
 
-On GitHub, run the **Release** workflow by hand (`workflow_dispatch`): it builds all three
-artifacts and uploads them as workflow artifacts, and the release step is skipped because
-the ref is not a tag. On GitLab both package jobs are `when: manual` on branches and upload
+On GitHub, run the **Release** workflow by hand (`workflow_dispatch`) **from a branch**: it
+builds all three artifacts and uploads them as workflow artifacts, and the release step is
+skipped because `github.ref_type` is not `tag`. Dispatching it against a *tag* does publish
+a release - the condition is on the ref, not on the event. On GitLab both package jobs are `when: manual` on branches and upload
 nothing unless a tag is set. Locally:
 
 ```bash

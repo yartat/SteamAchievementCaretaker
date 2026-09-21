@@ -3,6 +3,10 @@
 ###############################################################################
 * text=auto
 
+# Shell scripts are executed on Linux runners and marked executable in the index;
+# a CRLF shebang would make them fail with a bad-interpreter error.
+*.sh text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

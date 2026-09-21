@@ -160,8 +160,13 @@ jobs:
     needs: [version, windows, deb]
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
+    # A job-level permissions block replaces the set rather than adding to it:
+    # anything not listed here becomes `none`. contents: write alone left
+    # actions: none, and download-artifact reads the Artifacts API, so it failed
+    # with "Failed to ListArtifacts: (403) Forbidden".
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/download-artifact@v4
         with:

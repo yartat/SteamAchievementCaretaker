@@ -1,0 +1,180 @@
+# SteamAchievementCaretaker
+# Copyright (c) 2026 Yaroslav V Tatarenko
+#
+# This project is based on Steam Achievement Manager (SAM)
+# Copyright (c) 2008-2024 Rick (rick 'at' gibbed 'dot' us)
+# https://github.com/gibbed/SteamAchievementManager
+#
+# An altered source version of that software, plainly marked as such and
+# distributed under the zlib license; see LICENSE.txt in the repository root.
+#
+# Pushing a tag of the form v1.2.3 builds the release artifacts and publishes
+# them on a GitHub release:
+#
+#   steam-achievement-caretaker-1.2.3-win-x64.zip    framework-dependent
+#   steam-achievement-caretaker-1.2.3-win-x86.zip    framework-dependent
+#   steam-achievement-caretaker_1.2.3_amd64.deb      self-contained
+#
+# Everything is cross-built on ubuntu-latest; no Windows runner is needed.
+#
+# workflow_dispatch builds the same artifacts and uploads them as workflow
+# artifacts without creating a release, so the packaging can be exercised
+# without tagging.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Fails the run when the tag and the repository disagree about the version.
+  # The version sits in both projects and in two window-title literals that are
+  # not generated from the assembly version, so overriding it from the tag would
+  # leave the titles saying something else.
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: resolve
+        name: Resolve and verify the version
+        run: |
+          set -euo pipefail
+          VERSION="$(bash packaging/version.sh)"
+          VERSION="${VERSION#VERSION=}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building $VERSION"
+
+      - name: Extract the release notes for this version
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          awk -v want="## ${{ steps.resolve.outputs.version }} " '
+            index($0, want) == 1 { inside = 1 }
+            inside && $0 == "---" { exit }
+            inside { print }
+          ' docs/RELEASE-NOTES.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "docs/RELEASE-NOTES.md has no '## ${{ steps.resolve.outputs.version }} ...' section"
+            exit 1
+          fi
+          head -5 release-notes.md
+
+      - uses: actions/upload-artifact@v4
+        if: github.ref_type == 'tag'
+        with:
+          name: release-notes
+          path: release-notes.md
+          retention-days: 7
+
+  windows:
+    needs: version
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - rid: win-x64
+            platform: AnyCPU
+          - rid: win-x86
+            # Not cosmetic: -r win-x86 alone resolves 32-bit native libraries
+            # but still emits a 64-bit apphost, and that bundle dies in
+            # SkiaSharp's type initializer with nothing printed. The
+            # check-pe-arch.sh step below is what stops it shipping.
+            platform: x86
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Publish
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          DIR="steam-achievement-caretaker-${VERSION}-${{ matrix.rid }}"
+          dotnet publish SteamAchievementCaretaker.App/SteamAchievementCaretaker.App.csproj \
+            -c Release -r "${{ matrix.rid }}" -p:Platform="${{ matrix.platform }}" \
+            --self-contained false -o "out/$DIR"
+          bash packaging/check-pe-arch.sh "out/$DIR" "${{ matrix.rid }}"
+          # About 100 MB of the ~130 MB published tree is native debug symbols.
+          find "out/$DIR" -name '*.pdb' -delete
+          (cd out && zip -q -r -9 "../${DIR}.zip" "$DIR")
+          ls -lh "${DIR}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}
+          path: "*.zip"
+          retention-days: 7
+
+  deb:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # Self-contained: a framework-dependent deb would have to depend on
+      # dotnet-runtime-10.0, which only exists in Microsoft's apt repository, so
+      # `apt install ./*.deb` would fail on a stock Debian or Ubuntu.
+      - name: Publish and package
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          dotnet publish SteamAchievementCaretaker.App/SteamAchievementCaretaker.App.csproj \
+            -c Release -r linux-x64 --self-contained true -o out/linux-x64
+          bash packaging/linux/build-deb.sh \
+            --publish-dir out/linux-x64 \
+            --version "$VERSION" \
+            --output dist \
+            --homepage "${{ github.server_url }}/${{ github.repository }}"
+          ls -lh dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: dist/*.deb
+          retention-days: 7
+
+  release:
+    needs: [version, windows, deb]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          find artifacts -type f | sort
+          gh release create "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --title "Steam Achievement Caretaker $VERSION" \
+            --notes-file artifacts/release-notes/release-notes.md \
+            artifacts/win-x64/*.zip \
+            artifacts/win-x86/*.zip \
+            artifacts/deb/*.deb

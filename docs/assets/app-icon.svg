@@ -1,0 +1,32 @@
+<!--
+  SteamAchievementCaretaker
+  Copyright (c) 2026 Yaroslav V Tatarenko
+
+  This project is based on Steam Achievement Manager (SAM)
+  Copyright (c) 2008-2024 Rick (rick 'at' gibbed 'dot' us)
+  https://github.com/gibbed/SteamAchievementManager
+
+  An altered source version of that software, plainly marked as such and
+  distributed under the zlib license; see LICENSE.txt in the repository root.
+
+  Vector master for the application icon: Steam's gear carrying an achievement
+  star. Gold is #DDA63A, the same accent the dark theme uses. This is the
+  full-detail form, used for the 24px and larger entries of
+  SteamAchievementCaretaker.App/Resources/SteamAchievementCaretaker.ico; the
+  16px entry drops the teeth. See docs/BUILD.md.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256">
+  <rect width="64" height="64" rx="13" fill="#171A21"/>
+  <g fill="#DDA63A">
+    <rect x="28.75" y="4" width="6.5" height="10" rx="2"/>
+    <rect x="28.75" y="4" width="6.5" height="10" rx="2" transform="rotate(45 32 32)"/>
+    <rect x="28.75" y="4" width="6.5" height="10" rx="2" transform="rotate(90 32 32)"/>
+    <rect x="28.75" y="4" width="6.5" height="10" rx="2" transform="rotate(135 32 32)"/>
+    <rect x="28.75" y="4" width="6.5" height="10" rx="2" transform="rotate(180 32 32)"/>
+    <rect x="28.75" y="4" width="6.5" height="10" rx="2" transform="rotate(225 32 32)"/>
+    <rect x="28.75" y="4" width="6.5" height="10" rx="2" transform="rotate(270 32 32)"/>
+    <rect x="28.75" y="4" width="6.5" height="10" rx="2" transform="rotate(315 32 32)"/>
+  </g>
+  <circle cx="32" cy="32" r="19.75" fill="none" stroke="#DDA63A" stroke-width="6.5"/>
+  <path d="M32 20.5 L34.88 28.04 L42.94 28.45 L36.66 33.51 L38.76 41.3 L32 36.9 L25.24 41.3 L27.34 33.51 L21.06 28.45 L29.12 28.04 Z" fill="#DDA63A"/>
+</svg>

@@ -1,0 +1,22 @@
+Package: @PACKAGE@
+Version: @VERSION@
+Architecture: amd64
+Maintainer: @MAINTAINER@
+Installed-Size: @INSTALLED_SIZE@
+Depends: libc6, libgcc-s1, libstdc++6, zlib1g, libgssapi-krb5-2, libssl3t64 | libssl3 | libssl1.1, libicu76 | libicu74 | libicu72 | libicu71 | libicu70 | libicu67, libfontconfig1, libice6, libsm6, libx11-6, libx11-xcb1, libxrandr2
+Section: utils
+Priority: optional
+Homepage: @HOMEPAGE@
+Description: Manage Steam achievements and statistics
+ Steam Achievement Caretaker reads and writes achievements and statistics for
+ the games in a Steam library. It shows the library with a completion meter per
+ game, and opens a per-game editor for unlocking, locking and resetting.
+ .
+ It talks to the Steam client directly by loading steamclient.so in process, so
+ the Steam client must be installed, running and logged in.
+ .
+ This package is self-contained: it bundles the .NET runtime and does not need
+ dotnet-runtime-10.0 from Microsoft's repository.
+ .
+ Based on Steam Achievement Manager by Rick (gibbed), and an altered source
+ version of it.

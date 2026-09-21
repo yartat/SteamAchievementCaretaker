@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# SteamAchievementCaretaker
+# Copyright (c) 2026 Yaroslav V Tatarenko
+#
+# This project is based on Steam Achievement Manager (SAM)
+# Copyright (c) 2008-2024 Rick (rick 'at' gibbed 'dot' us)
+# https://github.com/gibbed/SteamAchievementManager
+#
+# An altered source version of that software, plainly marked as such and
+# distributed under the zlib license; see LICENSE.txt in the repository root.
+#
+# Fails unless every place that states a version agrees with the one given.
+#
+# The version lives in more places than it should: both projects, and two
+# window-title literals that are not generated from the assembly version. Rather
+# than paper over that in CI by overriding the version from the tag - which
+# would leave the titles saying something else - this refuses to release until
+# the repository and the tag say the same thing.
+
+set -euo pipefail
+
+version="${1:-}"
+if [ -z "$version" ]; then
+    echo "usage: check-version.sh <x.y.z>" >&2
+    exit 2
+fi
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+assembly="${version%%[-+~]*}.0"          # 1.0.0 -> 1.0.0.0
+title="$(echo "$version" | cut -d. -f1,2)"  # 1.0.0 -> 1.0
+failed=0
+
+expect() {
+    local label="$1" file="$2" pattern="$3"
+    if grep -qF -- "$pattern" "$root/$file"; then
+        echo "  ok    $label"
+    else
+        echo "  FAIL  $label: $file does not contain '$pattern'"
+        failed=1
+    fi
+}
+
+echo "checking that the repository says $version"
+
+for project in SteamAchievementCaretaker.App SteamAchievementCaretaker.SteamApi; do
+    csproj="$project/$project.csproj"
+    expect "$project Version"         "$csproj" "<Version>$version</Version>"
+    expect "$project AssemblyVersion" "$csproj" "<AssemblyVersion>$assembly</AssemblyVersion>"
+    expect "$project FileVersion"     "$csproj" "<FileVersion>$assembly</FileVersion>"
+done
+
+expect "library window title" \
+    "SteamAchievementCaretaker.App/Views/GamePickerWindow.axaml" \
+    "Steam Achievement Caretaker $title |"
+expect "editor window title" \
+    "SteamAchievementCaretaker.App/ViewModels/ManagerViewModel.cs" \
+    "\"Steam Achievement Caretaker $title\""
+
+expect "release notes entry" "docs/RELEASE-NOTES.md" "## $version "
+
+if [ "$failed" -ne 0 ]; then
+    cat >&2 <<EOF
+
+The tag and the repository disagree. Update the places listed above - the
+release checklist in docs/BUILD.md lists them - and move the tag.
+EOF
+    exit 1
+fi
+
+echo "all version references agree"

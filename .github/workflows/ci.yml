@@ -44,18 +44,32 @@ jobs:
       - name: Build
         run: dotnet build SteamAchievementCaretaker.slnx -c Release -p:TreatWarningsAsErrors=true
 
-      # Cheap, and it is the check that would have caught a 64-bit apphost
-      # shipping inside a 32-bit bundle.
-      - name: Publish each Windows target and check its architecture
+      - name: Install NSIS
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -yqq --no-install-recommends nsis
+
+      # The architecture check is what would have caught a 64-bit apphost
+      # shipping inside a 32-bit bundle. Building the installers here too means
+      # a broken installer script fails on the pull request rather than at tag
+      # time, when the only way out is another tag.
+      - name: Publish each Windows target, check it and package it
         run: |
           set -euo pipefail
-          publish() {
+          package() {
+            local rid="$1" platform="$2" arch="$3"
             dotnet publish SteamAchievementCaretaker.App/SteamAchievementCaretaker.App.csproj \
-              -c Release -r "$1" -p:Platform="$2" --self-contained false -o "out/$1" >/dev/null
-            bash packaging/check-pe-arch.sh "out/$1" "$1"
+              -c Release -r "$rid" -p:Platform="$platform" --self-contained true -o "out/$rid" >/dev/null
+            bash packaging/check-pe-arch.sh "out/$rid" "$rid"
+            find "out/$rid" -name '*.pdb' -delete
+            bash packaging/windows/build-installer.sh \
+              --publish-dir "out/$rid" --version "$VERSION" --arch "$arch" --output dist \
+              --homepage "${{ github.server_url }}/${{ github.repository }}"
           }
-          publish win-x64 AnyCPU
-          publish win-x86 x86
+          VERSION="$(bash packaging/version.sh)"
+          VERSION="${VERSION#VERSION=}"
+          package win-x64 AnyCPU x64
+          package win-x86 x86 x86
 
       - name: Build the Debian package
         run: |

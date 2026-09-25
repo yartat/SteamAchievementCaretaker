@@ -108,14 +108,19 @@ XAML and MVVM layers are reflection-heavy.
 
 ## Packaging a release
 
-1. Publish the target RID framework-dependent (see above).
-2. Strip the native `.pdb` files. They are about 100 MB of the ~128 MB bundle; a release zip
-   built with `-x!*.pdb` lands around 27 MB.
-3. Ship the whole publish directory, not just the executable.
-4. For Linux, document the runtime prerequisites below.
-5. Update [RELEASE-NOTES.md](RELEASE-NOTES.md) and the `Version` / `AssemblyVersion` /
+Both pipelines do all of this; the list is here for anyone cutting a release by hand or
+changing how one is cut.
+
+1. Publish the target RID **self-contained** (see above). For `win-x86`, remember
+   `-p:Platform=x86` as well as `-r win-x86`.
+2. Check the architecture with `packaging/check-pe-arch.sh`.
+3. Strip the `.pdb` files. They are about a third of the tree and nothing needs them.
+4. Run `packaging/windows/build-installer.sh` for the installer, and zip the publish
+   directory for the portable archive. On Linux, `packaging/linux/build-deb.sh`.
+5. Ship the whole publish directory in the archive, not just the executable.
+6. Update [RELEASE-NOTES.md](RELEASE-NOTES.md) and the `Version` / `AssemblyVersion` /
    `FileVersion` properties in both `.csproj` files. They are kept in step.
-6. Update the version in the two window-title literals, which are not generated from the
+7. Update the version in the two window-title literals, which are not generated from the
    assembly version: `Title=` in `Views/GamePickerWindow.axaml`, and `_Title` plus the
    `this.Title = …` assignment in `ViewModels/ManagerViewModel.cs`.
 
@@ -149,7 +154,7 @@ cleanly on a bare Debian 13.
 ## Continuous delivery
 
 The repository carries pipelines for **both** GitHub Actions and GitLab CI. They build the
-same three artifacts from the same scripts under `packaging/`, and either can be deleted if
+same five artifacts from the same scripts under `packaging/`, and either can be deleted if
 only one forge is used.
 
 Everything is cross-built on Linux — no Windows runner is needed — and both pipelines
@@ -157,11 +162,18 @@ share the version gate below.
 
 **Pushing a tag `vX.Y.Z` is the whole release process.** It produces:
 
-| Artifact | Build |
+| Artifact | What it is |
 |---|---|
-| `steam-achievement-caretaker-X.Y.Z-win-x64.zip` | framework-dependent, `.pdb` stripped |
-| `steam-achievement-caretaker-X.Y.Z-win-x86.zip` | framework-dependent, `.pdb` stripped |
-| `steam-achievement-caretaker_X.Y.Z_amd64.deb` | **self-contained** |
+| `steam-achievement-caretaker-X.Y.Z-win-x64-setup.exe` | Windows installer, 64-bit |
+| `steam-achievement-caretaker-X.Y.Z-win-x64-portable.zip` | unzip and run, 64-bit |
+| `steam-achievement-caretaker-X.Y.Z-win-x86-setup.exe` | Windows installer, 32-bit |
+| `steam-achievement-caretaker-X.Y.Z-win-x86-portable.zip` | unzip and run, 32-bit |
+| `steam-achievement-caretaker_X.Y.Z_amd64.deb` | Debian/Ubuntu package |
+
+**All five are self-contained** — the .NET runtime is inside, so nothing has to be
+installed first. For the portable archive that is the whole point; for the installer it is
+because an installer that finishes and then reports a missing runtime is a worse first run
+than a larger download. Debug symbols are stripped, which is about a third of the tree.
 
 ### GitHub Actions
 
@@ -206,16 +218,46 @@ something else. Run it yourself before tagging:
 bash packaging/check-version.sh 1.0.0
 ```
 
-### Why the deb is self-contained and the Windows zips are not
+### The Windows installer
+
+`packaging/windows/build-installer.sh` drives NSIS, which cross-compiles the installer stub,
+so this needs no Windows machine and no Wine — only the Debian/Ubuntu `nsis` package. The
+script is a thin wrapper; the installer itself is `packaging/windows/installer.nsi`.
+
+```bash
+bash packaging/windows/build-installer.sh \
+  --publish-dir out/win-x64 --version 1.0.0 --arch x64 --output dist
+```
+
+It installs **per user** into `%LOCALAPPDATA%\Programs\SteamAchievementCaretaker`, which is
+deliberate: the payload is self-contained, nothing is registered system-wide, no
+administrator is needed, and it sidesteps the Program Files / Program Files (x86) split so
+the x64 and x86 builds share one location and one Add/Remove Programs entry rather than
+leaving two half-installs behind. Installing either over the other wipes the directory
+first, so no stale assemblies survive an upgrade or an architecture switch.
+
+**The uninstaller removes only what was installed.** `~/.sac` — settings, the game cache
+and the user's own like/dislike ratings — is left alone: uninstalling is not a request to
+throw away data that a reinstall would want back.
+
+Silent install and uninstall work the usual NSIS way, which is also how CI-built installers
+were verified:
+
+```
+setup.exe /S /D=C:\path\without\quotes     (/D must come last)
+Uninstall.exe /S
+```
+
+### Why everything is self-contained
 
 A framework-dependent `.deb` would have to declare `Depends: dotnet-runtime-10.0`, and that
 package exists only in Microsoft's own apt repository — so `apt install ./…deb` would fail
-with an unmet dependency on a stock Debian or Ubuntu. Bundling the runtime costs about
-100 MB and makes the package install against nothing but ordinary system libraries.
+with an unmet dependency on a stock Debian or Ubuntu.
 
-On Windows the trade runs the other way: the .NET Desktop Runtime is a signed one-click
-installer from Microsoft, so the zips stay small — a published tree is about 30 MB once
-the debug symbols are stripped, and about 12 MB zipped.
+The Windows builds started framework-dependent, at about 12 MB zipped against the ~34 MB
+they are now. They were changed to self-contained so that one sentence covers every
+download: nothing else to install. A portable build that first asks you to install a
+runtime is not portable, and the installer has no way to fetch one.
 
 ### Building the packages without tagging
 

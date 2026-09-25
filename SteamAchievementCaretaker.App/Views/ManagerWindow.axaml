@@ -270,7 +270,10 @@
                      SelectedItem="{Binding SelectedAchievement}">
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="stats:AchievementInfo">
-                  <Grid ColumnDefinitions="26,32,*" MinHeight="36" Background="{Binding RowBackground}">
+                  <!-- The date column is fixed-width so the dates line up down
+                       the list; 96 holds "d MMM yyyy" with room for a longer
+                       month abbreviation in other cultures. -->
+                  <Grid ColumnDefinitions="26,32,*,96" MinHeight="36" Background="{Binding RowBackground}">
                     <CheckBox Grid.Column="0"
                               IsChecked="{Binding IsAchieved}"
                               IsEnabled="{Binding !IsProtected}"
@@ -282,20 +285,37 @@
                             Background="{DynamicResource SamPlaceholderBrush}">
                       <Image Source="{Binding Icon}" />
                     </Border>
-                    <TextBlock Grid.Column="2"
-                               Text="{Binding DisplayName}"
-                               FontSize="12"
-                               Foreground="{DynamicResource SamTextBrush}"
-                               VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis"
-                               Margin="8,0,0,0" />
+                    <!-- Name, and the description under it on one trimmed line;
+                         the detail pane still shows the description in full.
+                         The second line collapses when there is nothing to say,
+                         which is the case for hidden achievements. -->
+                    <StackPanel Grid.Column="2"
+                                VerticalAlignment="Center"
+                                Spacing="1"
+                                Margin="8,4,8,4">
+                      <TextBlock Text="{Binding DisplayName}"
+                                 FontSize="12"
+                                 Foreground="{DynamicResource SamTextBrush}"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding DisplayDescription}"
+                                 FontSize="11"
+                                 Foreground="{DynamicResource SamSecondaryTextBrush}"
+                                 TextTrimming="CharacterEllipsis"
+                                 IsVisible="{Binding DisplayDescription, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="3"
+                               Text="{Binding UnlockDateText}"
+                               FontSize="11"
+                               Foreground="{DynamicResource SamSecondaryTextBrush}"
+                               VerticalAlignment="Center" />
                   </Grid>
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
 
-            <!-- The description finally has room, which is the whole reason
-                 this is a pane rather than a third grid column. -->
+            <!-- The description in full. The list shows it too, but only as
+                 one trimmed line under the name; this pane is where it has room,
+                 which is why it is a pane rather than another list column. -->
             <Border Grid.Column="1"
                     Background="{DynamicResource SamRailBrush}"
                     BorderThickness="1,0,0,0"

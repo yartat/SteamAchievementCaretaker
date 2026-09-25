@@ -17,9 +17,9 @@
         x:DataType="vm:GamePickerViewModel"
         Icon="/Resources/SteamAchievementCaretaker.ico"
         Width="1020" Height="600"
-        MinWidth="720" MinHeight="420"
+        MinWidth="1000" MinHeight="420"
         Background="{DynamicResource SamWindowBrush}"
-        Title="Steam Achievement Caretaker 1.0 | Pick a game... Any game...">
+        Title="Steam Achievement Caretaker 1.1 | Pick a game... Any game...">
 
   <Window.Styles>
     <!-- Rail entries: collections above, inclusive type toggles below. The
@@ -326,233 +326,260 @@
         </DockPanel>
       </Border>
 
-      <!-- Tile view -->
-      <ListBox Name="_GameTileBox"
-               Classes="plain"
-               Margin="14,0,14,8"
-               IsVisible="{Binding IsTileView}"
-               ItemsSource="{Binding FilteredGames}"
-               SelectedItem="{Binding SelectedGame}"
-               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-               DoubleTapped="OnGameDoubleTapped"
-               KeyDown="OnGameListKeyDown">
-        <ListBox.ItemsPanel>
-          <ItemsPanelTemplate>
-            <WrapPanel Orientation="Horizontal" />
-          </ItemsPanelTemplate>
-        </ListBox.ItemsPanel>
-        <ListBox.ItemTemplate>
-          <DataTemplate x:DataType="local:GameInfo">
-            <StackPanel Width="183" Margin="2" Spacing="7">
-              <Panel>
-                <Border Height="86"
-                        Background="{DynamicResource SamPlaceholderBrush}"
-                        CornerRadius="5"
-                        ClipToBounds="True">
-                  <Image Source="{Binding Logo}" Stretch="UniformToFill" />
-                </Border>
-                <!-- A perfect game is worth calling out; it is the thing the
-                     whole view is organised around. -->
-                <Border IsVisible="{Binding IsPerfect}"
-                        HorizontalAlignment="Right" VerticalAlignment="Top"
-                        Margin="7"
-                        Padding="6,2"
-                        CornerRadius="10"
-                        Background="{DynamicResource SamAccentBrush}">
-                  <StackPanel Orientation="Horizontal" Spacing="4">
-                    <PathIcon Classes="small"
-                              Data="{StaticResource StarIcon}"
-                              Foreground="{DynamicResource SamOnAccentBrush}" />
-                    <TextBlock Text="100%"
-                               FontSize="10"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource SamOnAccentBrush}"
-                               VerticalAlignment="Center" />
-                  </StackPanel>
-                </Border>
-              </Panel>
-
-              <TextBlock Text="{Binding Name}"
-                         FontSize="12"
-                         Foreground="{DynamicResource SamTextBrush}"
-                         TextTrimming="CharacterEllipsis" />
-
-              <!-- The meter is absent, not empty, when Steam has never cached
-                   a schema: unknown and zero are different answers. -->
-              <ProgressBar Height="3"
-                           Minimum="0" Maximum="1"
-                           Value="{Binding CompletionFraction}"
-                           IsVisible="{Binding HasCompletion}"
-                           Foreground="{DynamicResource SamAccentBrush}"
-                           Background="{DynamicResource SamMeterTrackBrush}" />
-
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right"
-                           Text="{Binding LastPlayedText}"
-                           FontSize="10.5"
-                           Foreground="{DynamicResource SamMutedTextBrush}" />
-                <TextBlock Text="{Binding AchievementsText}"
-                           FontSize="10.5"
-                           Foreground="{DynamicResource SamMutedTextBrush}" />
-              </DockPanel>
-            </StackPanel>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
-
-      <!-- Content view -->
-      <DockPanel IsVisible="{Binding IsContentView}">
-        <Border DockPanel.Dock="Top"
-                Padding="20,0"
-                BorderThickness="0,0,0,1"
-                BorderBrush="{DynamicResource SamBorderBrush}">
-          <!-- NOTE: these column widths must match the row template below. -->
-          <Grid ColumnDefinitions="56,*,110,110,90,132,80">
-            <Grid.Styles>
-              <Style Selector="Button.header">
-                <Setter Property="Background" Value="Transparent" />
-                <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="Padding" Value="4,7" />
-                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="FontSize" Value="11" />
-                <Setter Property="Foreground" Value="{DynamicResource SamMutedTextBrush}" />
-              </Style>
-            </Grid.Styles>
-
-            <Button Grid.Column="1" Classes="header"
-                    Command="{Binding SortByCommand}"
-                    CommandParameter="{x:Static local:GameSortField.Name}"
-                    Content="Name" />
-            <Button Grid.Column="2" Classes="header"
-                    Command="{Binding SortByCommand}"
-                    CommandParameter="{x:Static local:GameSortField.ReleaseDate}"
-                    Content="Released" />
-            <Button Grid.Column="3" Classes="header"
-                    Command="{Binding SortByCommand}"
-                    CommandParameter="{x:Static local:GameSortField.LastPlayed}"
-                    Content="Last played" />
-            <Button Grid.Column="4" Classes="header"
-                    Command="{Binding SortByCommand}"
-                    CommandParameter="{x:Static local:GameSortField.SteamRating}"
-                    Content="Steam" />
-            <Button Grid.Column="5" Classes="header"
-                    Command="{Binding SortByCommand}"
-                    CommandParameter="{x:Static local:GameSortField.Completion}"
-                    Content="Achievements" />
-            <Button Grid.Column="6" Classes="header"
-                    Command="{Binding SortByCommand}"
-                    CommandParameter="{x:Static local:GameSortField.OwnRating}"
-                    Content="Mine" />
-          </Grid>
-        </Border>
-
-        <ListBox Name="_GameContentBox"
+      <!-- Both views share the space below the header. They sit in one Panel
+           because this is a DockPanel: a child with no DockPanel.Dock is docked
+           Left and sized to its content, and only the last child fills. The tile
+           list used to be that middle child, so it was only as wide as a row of
+           tiles - the scrollbar stood beside the last tile instead of at the
+           window edge, and the wheel did nothing over the empty space to its
+           right. In a Panel both views stretch to the full width. -->
+      <Panel>
+        <!-- Tile view -->
+        <ListBox Name="_GameTileBox"
                  Classes="plain"
+                 Margin="0,0,0,8"
                  Padding="14,0"
+                 IsVisible="{Binding IsTileView}"
                  ItemsSource="{Binding FilteredGames}"
                  SelectedItem="{Binding SelectedGame}"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  DoubleTapped="OnGameDoubleTapped"
                  KeyDown="OnGameListKeyDown">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="local:GameInfo">
-              <Grid ColumnDefinitions="56,*,110,110,90,132,80" MinHeight="38">
-                <Border Grid.Column="0"
-                        Width="48" Height="22"
-                        HorizontalAlignment="Left"
-                        Background="{DynamicResource SamPlaceholderBrush}"
-                        CornerRadius="2"
-                        ClipToBounds="True">
-                  <Image Source="{Binding Logo}" Stretch="UniformToFill" />
-                </Border>
-                <TextBlock Grid.Column="1"
-                           Text="{Binding Name}"
+              <StackPanel Width="183" Margin="2" Spacing="7">
+                <Panel>
+                  <Border Height="86"
+                          Background="{DynamicResource SamPlaceholderBrush}"
+                          CornerRadius="5"
+                          ClipToBounds="True">
+                    <Image Source="{Binding Logo}" Stretch="UniformToFill" />
+                  </Border>
+                  <!-- A perfect game is worth calling out; it is the thing the
+                       whole view is organised around. -->
+                  <Border IsVisible="{Binding IsPerfect}"
+                          HorizontalAlignment="Right" VerticalAlignment="Top"
+                          Margin="7"
+                          Padding="6,2"
+                          CornerRadius="10"
+                          Background="{DynamicResource SamAccentBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <PathIcon Classes="small"
+                                Data="{StaticResource StarIcon}"
+                                Foreground="{DynamicResource SamOnAccentBrush}" />
+                      <TextBlock Text="100%"
+                                 FontSize="10"
+                                 FontWeight="SemiBold"
+                                 Foreground="{DynamicResource SamOnAccentBrush}"
+                                 VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Border>
+                </Panel>
+
+                <TextBlock Text="{Binding Name}"
                            FontSize="12"
                            Foreground="{DynamicResource SamTextBrush}"
-                           VerticalAlignment="Center"
-                           TextTrimming="CharacterEllipsis"
-                           Margin="4,0" />
-                <TextBlock Grid.Column="2"
-                           Text="{Binding ReleaseDateText}"
-                           FontSize="12"
-                           Foreground="{DynamicResource SamSecondaryTextBrush}"
-                           VerticalAlignment="Center"
-                           Margin="4,0" />
-                <TextBlock Grid.Column="3"
-                           Text="{Binding LastPlayedText}"
-                           FontSize="12"
-                           Foreground="{DynamicResource SamSecondaryTextBrush}"
-                           VerticalAlignment="Center"
-                           Margin="4,0"
-                           ToolTip.Tip="{Binding PlaytimeText}" />
-                <TextBlock Grid.Column="4"
-                           Text="{Binding SteamRatingText}"
-                           FontSize="12"
-                           Foreground="{DynamicResource SamSecondaryTextBrush}"
-                           VerticalAlignment="Center"
-                           TextAlignment="Right"
-                           Margin="4,0"
-                           ToolTip.Tip="{Binding SteamRatingTooltip}" />
+                           TextTrimming="CharacterEllipsis" />
 
-                <StackPanel Grid.Column="5" VerticalAlignment="Center" Spacing="4" Margin="4,0">
+                <!-- The meter is absent, not empty, when Steam has never cached
+                     a schema: unknown and zero are different answers. -->
+                <!-- MinWidth="0" for the same reason as the content view's meter:
+                     the theme's 200 minimum is wider than the 183 tile. -->
+                <ProgressBar Height="3"
+                             MinWidth="0"
+                             Minimum="0" Maximum="1"
+                             Value="{Binding CompletionFraction}"
+                             IsVisible="{Binding HasCompletion}"
+                             Foreground="{DynamicResource SamAccentBrush}"
+                             Background="{DynamicResource SamMeterTrackBrush}" />
+
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Right"
+                             Text="{Binding LastPlayedText}"
+                             FontSize="10.5"
+                             Foreground="{DynamicResource SamMutedTextBrush}" />
                   <TextBlock Text="{Binding AchievementsText}"
-                             FontSize="11"
-                             Foreground="{DynamicResource SamSecondaryTextBrush}" />
-                  <ProgressBar Height="3"
-                               Minimum="0" Maximum="1"
-                               Value="{Binding CompletionFraction}"
-                               IsVisible="{Binding HasCompletion}"
-                               Foreground="{DynamicResource SamAccentBrush}"
-                               Background="{DynamicResource SamMeterTrackBrush}" />
-                </StackPanel>
-
-                <!-- Plain Buttons with a bound style class rather than
-                     ToggleButtons: the rating is owned by the view model, and a
-                     ToggleButton flips its own IsChecked on click, which fights
-                     the binding and leaves the displayed state out of sync with
-                     what was actually saved. -->
-                <StackPanel Grid.Column="6"
-                            Orientation="Horizontal"
-                            Spacing="2"
-                            VerticalAlignment="Center"
-                            Margin="4,0">
-                  <StackPanel.Styles>
-                    <Style Selector="Button.liked PathIcon">
-                      <Setter Property="Foreground" Value="{StaticResource RatingLikeBrush}" />
-                    </Style>
-                    <Style Selector="Button.disliked PathIcon">
-                      <Setter Property="Foreground" Value="{StaticResource RatingDislikeBrush}" />
-                    </Style>
-                    <Style Selector="Button:not(.liked):not(.disliked) PathIcon">
-                      <Setter Property="Opacity" Value="0.45" />
-                    </Style>
-                  </StackPanel.Styles>
-
-                  <Button Classes.liked="{Binding IsLiked}"
-                          Padding="5,3"
-                          Background="Transparent"
-                          BorderThickness="0"
-                          ToolTip.Tip="I like this game (saved locally by Caretaker, never sent to Steam)"
-                          Command="{Binding $parent[ListBox].((vm:GamePickerViewModel)DataContext).ToggleLikeCommand}"
-                          CommandParameter="{Binding}">
-                    <PathIcon Data="{StaticResource LikeIcon}" />
-                  </Button>
-                  <Button Classes.disliked="{Binding IsDisliked}"
-                          Padding="5,3"
-                          Background="Transparent"
-                          BorderThickness="0"
-                          ToolTip.Tip="I do not like this game (saved locally by Caretaker, never sent to Steam)"
-                          Command="{Binding $parent[ListBox].((vm:GamePickerViewModel)DataContext).ToggleDislikeCommand}"
-                          CommandParameter="{Binding}">
-                    <PathIcon Data="{StaticResource DislikeIcon}" />
-                  </Button>
-                </StackPanel>
-              </Grid>
+                             FontSize="10.5"
+                             Foreground="{DynamicResource SamMutedTextBrush}" />
+                </DockPanel>
+              </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
-      </DockPanel>
+
+        <!-- Content view -->
+        <DockPanel IsVisible="{Binding IsContentView}">
+          <Border DockPanel.Dock="Top"
+                  Padding="26,0"
+                  BorderThickness="0,0,0,1"
+                  BorderBrush="{DynamicResource SamBorderBrush}">
+            <!-- NOTE: these column widths must match the row template below, and
+                 so must the horizontal inset. The rows sit inside the ListBox's
+                 14 and the Fluent ListBoxItem's own 12, so this Border's padding
+                 is 26. Every column after the star one is laid out from the right
+                 edge, so any difference moves all of them against their headers.
+
+                 The window's MinWidth is derived from these numbers too: rail 204,
+                 inset 2 x 26, fixed columns 578 - which is 834 before the Name
+                 column gets anything. At the old MinWidth of 720 the window could
+                 be shrunk until Name had nothing at all. 1000 leaves it 166. Change
+                 a width here and re-derive that, or Name disappears again before
+                 the window stops shrinking. -->
+            <Grid ColumnDefinitions="56,*,110,110,90,132,80">
+              <Grid.Styles>
+                <Style Selector="Button.header">
+                  <Setter Property="Background" Value="Transparent" />
+                  <Setter Property="BorderThickness" Value="0" />
+                  <Setter Property="Padding" Value="4,7" />
+                  <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                  <Setter Property="FontWeight" Value="SemiBold" />
+                  <Setter Property="FontSize" Value="11" />
+                  <Setter Property="Foreground" Value="{DynamicResource SamMutedTextBrush}" />
+                </Style>
+              </Grid.Styles>
+
+              <Button Grid.Column="1" Classes="header"
+                      Command="{Binding SortByCommand}"
+                      CommandParameter="{x:Static local:GameSortField.Name}"
+                      Content="Name" />
+              <Button Grid.Column="2" Classes="header"
+                      Command="{Binding SortByCommand}"
+                      CommandParameter="{x:Static local:GameSortField.ReleaseDate}"
+                      Content="Released" />
+              <Button Grid.Column="3" Classes="header"
+                      Command="{Binding SortByCommand}"
+                      CommandParameter="{x:Static local:GameSortField.LastPlayed}"
+                      Content="Last played" />
+              <Button Grid.Column="4" Classes="header"
+                      Command="{Binding SortByCommand}"
+                      CommandParameter="{x:Static local:GameSortField.SteamRating}"
+                      Content="Steam" />
+              <Button Grid.Column="5" Classes="header"
+                      Command="{Binding SortByCommand}"
+                      CommandParameter="{x:Static local:GameSortField.Completion}"
+                      Content="Achievements" />
+              <Button Grid.Column="6" Classes="header"
+                      Command="{Binding SortByCommand}"
+                      CommandParameter="{x:Static local:GameSortField.OwnRating}"
+                      Content="Mine" />
+            </Grid>
+          </Border>
+
+          <ListBox Name="_GameContentBox"
+                   Classes="plain"
+                   Padding="14,0"
+                   ItemsSource="{Binding FilteredGames}"
+                   SelectedItem="{Binding SelectedGame}"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   DoubleTapped="OnGameDoubleTapped"
+                   KeyDown="OnGameListKeyDown">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="local:GameInfo">
+                <Grid ColumnDefinitions="56,*,110,110,90,132,80" MinHeight="38">
+                  <Border Grid.Column="0"
+                          Width="48" Height="22"
+                          HorizontalAlignment="Left"
+                          Background="{DynamicResource SamPlaceholderBrush}"
+                          CornerRadius="2"
+                          ClipToBounds="True">
+                    <Image Source="{Binding Logo}" Stretch="UniformToFill" />
+                  </Border>
+                  <TextBlock Grid.Column="1"
+                             Text="{Binding Name}"
+                             FontSize="12"
+                             Foreground="{DynamicResource SamTextBrush}"
+                             VerticalAlignment="Center"
+                             TextTrimming="CharacterEllipsis"
+                             Margin="4,0" />
+                  <TextBlock Grid.Column="2"
+                             Text="{Binding ReleaseDateText}"
+                             FontSize="12"
+                             Foreground="{DynamicResource SamSecondaryTextBrush}"
+                             VerticalAlignment="Center"
+                             Margin="4,0" />
+                  <TextBlock Grid.Column="3"
+                             Text="{Binding LastPlayedText}"
+                             FontSize="12"
+                             Foreground="{DynamicResource SamSecondaryTextBrush}"
+                             VerticalAlignment="Center"
+                             Margin="4,0"
+                             ToolTip.Tip="{Binding PlaytimeText}" />
+                  <TextBlock Grid.Column="4"
+                             Text="{Binding SteamRatingText}"
+                             FontSize="12"
+                             Foreground="{DynamicResource SamSecondaryTextBrush}"
+                             VerticalAlignment="Center"
+                             Margin="4,0"
+                             ToolTip.Tip="{Binding SteamRatingTooltip}" />
+
+                  <StackPanel Grid.Column="5" VerticalAlignment="Center" Spacing="4" Margin="4,0">
+                    <TextBlock Text="{Binding AchievementsText}"
+                               FontSize="11"
+                               Foreground="{DynamicResource SamSecondaryTextBrush}" />
+                    <!-- MinWidth="0": the Fluent theme gives ProgressBar a minimum
+                         of 200, which overrode this 132 column and ran the bar
+                         under the Steam value and the like button. -->
+                    <ProgressBar Height="3"
+                                 MinWidth="0"
+                                 Minimum="0" Maximum="1"
+                                 Value="{Binding CompletionFraction}"
+                                 IsVisible="{Binding HasCompletion}"
+                                 Foreground="{DynamicResource SamAccentBrush}"
+                                 Background="{DynamicResource SamMeterTrackBrush}" />
+                  </StackPanel>
+
+                  <!-- Plain Buttons with a bound style class rather than
+                       ToggleButtons: the rating is owned by the view model, and a
+                       ToggleButton flips its own IsChecked on click, which fights
+                       the binding and leaves the displayed state out of sync with
+                       what was actually saved. -->
+                  <StackPanel Grid.Column="6"
+                              Orientation="Horizontal"
+                              Spacing="2"
+                              VerticalAlignment="Center"
+                              Margin="4,0">
+                    <StackPanel.Styles>
+                      <Style Selector="Button.liked PathIcon">
+                        <Setter Property="Foreground" Value="{StaticResource RatingLikeBrush}" />
+                      </Style>
+                      <Style Selector="Button.disliked PathIcon">
+                        <Setter Property="Foreground" Value="{StaticResource RatingDislikeBrush}" />
+                      </Style>
+                      <Style Selector="Button:not(.liked):not(.disliked) PathIcon">
+                        <Setter Property="Opacity" Value="0.45" />
+                      </Style>
+                    </StackPanel.Styles>
+
+                    <Button Classes.liked="{Binding IsLiked}"
+                            Padding="5,3"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ToolTip.Tip="I like this game (saved locally by Caretaker, never sent to Steam)"
+                            Command="{Binding $parent[ListBox].((vm:GamePickerViewModel)DataContext).ToggleLikeCommand}"
+                            CommandParameter="{Binding}">
+                      <PathIcon Data="{StaticResource LikeIcon}" />
+                    </Button>
+                    <Button Classes.disliked="{Binding IsDisliked}"
+                            Padding="5,3"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ToolTip.Tip="I do not like this game (saved locally by Caretaker, never sent to Steam)"
+                            Command="{Binding $parent[ListBox].((vm:GamePickerViewModel)DataContext).ToggleDislikeCommand}"
+                            CommandParameter="{Binding}">
+                      <PathIcon Data="{StaticResource DislikeIcon}" />
+                    </Button>
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Panel>
 
     </DockPanel>
   </DockPanel>

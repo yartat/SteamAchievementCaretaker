@@ -113,7 +113,7 @@ namespace SteamAchievementCaretaker.App.ViewModels
         public ObservableCollection<Stats.StatInfo> Statistics { get; } = new();
 
         [ObservableProperty]
-        private string _Title = "Steam Achievement Caretaker 1.0";
+        private string _Title = "Steam Achievement Caretaker 1.1";
 
         [ObservableProperty]
         private string _StatusText = "";
@@ -280,7 +280,7 @@ namespace SteamAchievementCaretaker.App.ViewModels
 
             var name = client.SteamApps001.GetAppData((uint)gameId, "name");
             this.GameName = name ?? gameId.ToString(CultureInfo.InvariantCulture);
-            this.Title = "Steam Achievement Caretaker 1.0 | " + this.GameName;
+            this.Title = "Steam Achievement Caretaker 1.1 | " + this.GameName;
 
             this._UserStatsReceivedCallback = client.CreateAndRegisterCallback<SteamApi.Callbacks.UserStatsReceived>();
             this._UserStatsReceivedCallback.OnRun += this.OnUserStatsReceived;

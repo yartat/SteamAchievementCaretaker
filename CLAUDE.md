@@ -356,6 +356,27 @@ synchronously.
   that was never saved. The like/dislike buttons are plain `Button`s with
   `Classes.liked="{Binding IsLiked}"` and a style selector doing the colouring, so the view
   model stays the single owner of the value.
+- **The Fluent `ProgressBar` has `MinWidth="200"`, and it beats both the column and an
+  explicit `Width`.** A completion meter in the content view's 132-wide column rendered 200
+  wide and ran under the Steam value on one side and the like button on the other; the one
+  in a 183-wide tile stuck out past the capsule. Both meters now set `MinWidth="0"`. Any
+  new `ProgressBar` narrower than 200 needs the same. The two status-bar bars still say
+  `Width="130"` and actually render at 200 — harmless there, but the markup is not the truth.
+- The content view's header and rows are two grids that must agree on **both** column
+  widths and horizontal inset. Every column after the `*` one is laid out from the right
+  edge, so an inset mismatch shifts all of them against their headers. The rows get the
+  ListBox's 14 plus the Fluent `ListBoxItem`'s 12, which is why the header's padding is 26.
+  **The window's `MinWidth` (1000) is derived from the same numbers**: rail 204 + inset 52 +
+  fixed columns 578 = 834 before Name gets anything. It used to be 720, so the window could
+  be shrunk until the Name column vanished and the dislike button was clipped. Widen any
+  column and re-derive it.
+- **A `DockPanel` child with no `DockPanel.Dock` is docked `Left` and sized to its content;
+  only the last child fills.** The library's tile list was the middle child of the main
+  area, beside the content view, so it was only as wide as one row of tiles: its scrollbar
+  stood next to the last tile instead of at the window edge, and the wheel did nothing over
+  the empty space to its right. Both views now sit in one `Panel` as the last child. Put a
+  list's horizontal inset in `Padding`, not `Margin`, too: padding is inside the scroll
+  area, so the scrollbar stays at the edge.
 - Images are `Avalonia.Media.Imaging.Bitmap`. Unlike `System.Drawing.Bitmap` it copies the
   decoded pixels, so the source stream can be disposed immediately — which is why the old
   "bitmap outlives its MemoryStream" bug does not exist in the ported code.
@@ -390,6 +411,14 @@ only `IsVisible` differs.
 
 **The editor** is a game header, filter chips, a list, and a detail pane. The detail pane
 exists because the description had nowhere to go in the old three-column grid.
+
+Each list row carries the name with the description under it on **one trimmed line**
+(collapsed when empty, as it is for hidden achievements), and a fixed 96-wide unlock-date
+column so the dates line up. `AchievementInfo.UnlockDateText` gives the day only, in the
+library's `d MMM yyyy`, from `UnlockTime`, which is already local time. It is blank for a
+locked achievement and `—` for one Steam reports unlocked with no timestamp — keyed on
+`OriginalValue`, not `IsAchieved`, so a ticked-but-uncommitted box does not claim an unlock
+whose date was lost.
 
 Content columns are: capsule, name, release date, last played, Steam rating, achievements
 (count plus meter), and the user's own like/dislike. Headers are buttons that set the sort.
@@ -835,6 +864,8 @@ release. Delete whichever forge is not used. `packaging/` holds the shared half:
 | `packaging/version.sh` | prints `VERSION=…`: the tag version, or the project version with a `~dev` suffix off a tag. Reads GitLab's and GitHub's tag variables both |
 | `packaging/check-version.sh` | fails unless the tag, both `.csproj` files, both window titles and the release-notes heading agree |
 | `packaging/check-pe-arch.sh` | asserts a published Windows bundle is all one architecture |
+| `packaging/windows/build-installer.sh` | drives NSIS to build the per-user Windows installer |
+| `packaging/windows/installer.nsi` | the installer itself |
 | `packaging/linux/build-deb.sh` | builds the `.deb` from a self-contained publish |
 | `packaging/linux/control.in`, `*.desktop`, `copyright` | the package metadata |
 
@@ -849,10 +880,17 @@ Five things there are load-bearing:
 - **CI does not override the version from the tag; it refuses to release when they
   disagree.** Two window titles are literals that cannot be driven from the assembly
   version, so overriding would ship a binary whose window said something else.
-- **The deb is self-contained; the Windows zips are not.** A framework-dependent deb would
-  need `Depends: dotnet-runtime-10.0`, which lives only in Microsoft's apt repository, so
-  `apt install ./…deb` would fail on a stock Debian. On Windows the runtime is a signed
-  one-click installer, so a zip is about 12 MB rather than a bundled ~120 MB.
+- **Every artifact is self-contained.** A framework-dependent deb would need
+  `Depends: dotnet-runtime-10.0`, which lives only in Microsoft's apt repository, so
+  `apt install ./…deb` would fail on a stock Debian. The Windows builds were
+  framework-dependent and 12 MB; they are self-contained and ~34 MB now so that one
+  sentence covers every download. A portable build that first asks for a runtime is not
+  portable, and the installer cannot fetch one.
+- **The Windows installer is per-user and its uninstaller must never touch `~/.sac`.**
+  It installs into `%LOCALAPPDATA%\Programs\`, so no administrator and no Program Files
+  (x86) split; x64 and x86 share one location and one uninstall entry, and an install wipes
+  the directory first so no stale assemblies survive. Removing the application is not a
+  request to delete the user's ratings.
 - **The scripts are invoked as `bash script.sh`**, never executed directly, so nothing
   depends on the executable bit surviving in git. **This applies inside the scripts too.**
   `version.sh` called `check-version.sh` directly, and the first real GitHub run died with

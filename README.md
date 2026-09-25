@@ -33,16 +33,26 @@ Picking a game in the library starts a second copy of the executable for it. Tha
 oversight: Steam's `ISteamUserStats` interface is scoped to the single app ID a process was
 initialised with, so one process genuinely cannot serve both windows.
 
+## Downloads
+
+| File | Use it when |
+|---|---|
+| `…-win-x64-setup.exe` | 64-bit Windows, and you want it in the Start menu |
+| `…-win-x64-portable.zip` | 64-bit Windows, no installation — unzip and run |
+| `…-win-x86-setup.exe` / `…-win-x86-portable.zip` | 32-bit Windows |
+| `…_amd64.deb` | Debian or Ubuntu: `sudo apt install ./…deb` |
+
+Every download bundles the .NET runtime, so there is nothing to install first. The Windows
+installer is per-user: it needs no administrator, and uninstalling leaves your settings and
+ratings in `~/.sac` alone.
+
 ## Requirements
 
 - The [Steam client](https://store.steampowered.com/about/), running and logged in
-- The [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) — unless you are
-  using a self-contained build (see [docs/BUILD.md](docs/BUILD.md))
 
 ### Linux
 
-In addition to the .NET runtime, the UI needs a few system libraries that a minimal install
-may not have:
+The UI needs a few system libraries that a minimal install may not have:
 
 ```bash
 sudo apt-get install libfontconfig1 libice6 libsm6
@@ -95,7 +105,7 @@ time Caretaker runs.
 
 ## Versioning
 
-Current version: **1.0.0**. Caretaker restarts version numbering at 1.0; it succeeds Steam
+Current version: **1.1.0**. Caretaker restarts version numbering at 1.0; it succeeds Steam
 Achievement Manager 8.0, and [docs/RELEASE-NOTES.md](docs/RELEASE-NOTES.md) records what
 changed relative to SAM.
 
@@ -136,7 +146,7 @@ changed relative to SAM.
   Windows registry: it uses `NativeLibrary` and per-OS Steam path discovery, so the projects
   target plain `net10.0` and publish for Windows, Linux and macOS.
 - Support for the current `UserGameStatsSchema` format, alongside the older one.
-- Achievement unlock times are shown in the editor.
+- The achievement list shows each description under its name, and the date it was unlocked.
 - Fixed a long-standing bug in the `ISteamClient::GetISteamApps` interop signature, which
   was missing the `this` pointer. It went unnoticed for years in 32-bit builds but returns a
   null interface in 64-bit ones.

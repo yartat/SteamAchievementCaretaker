@@ -10,6 +10,100 @@ Achievement Manager 8.0.
 
 ---
 
+## 1.1.0 — 2026-09-23
+
+A packaging and polish release. Windows now gets an installer and a portable archive, both
+self-contained, and the library and editor windows lose a handful of layout faults. **The
+interop layer is unchanged** — nothing new is sent to Steam, and nothing Caretaker does to
+your account is different from 1.0.0.
+
+### Highlights
+
+- **A Windows installer**, for x64 and x86, alongside a portable zip for each.
+- **Every download is self-contained.** Nothing to install first — no .NET runtime.
+- **The achievement list shows each description** on a second line under the name, and
+  the **unlock date** in a column of its own.
+- The Content view's columns line up with their headers again, and the library window can
+  no longer be shrunk until the game names disappear.
+
+### Downloads
+
+| If you are on | Take |
+|---|---|
+| 64-bit Windows | `steam-achievement-caretaker-1.1.0-win-x64-setup.exe` to install, or `…-win-x64-portable.zip` to unzip and run |
+| 32-bit Windows | `…-win-x86-setup.exe` or `…-win-x86-portable.zip` |
+| Debian or Ubuntu (amd64) | `steam-achievement-caretaker_1.1.0_amd64.deb` — `sudo apt install ./steam-achievement-caretaker_1.1.0_amd64.deb` |
+| Windows on Arm | the x64 download — Valve ships no ARM build of the Steam client, and Windows emulates both |
+
+Every download bundles the .NET runtime. The portable archives unzip to a folder that has to
+stay together — the executable needs the Avalonia assemblies and the native Skia libraries
+beside it.
+
+The installer is **per user**: it needs no administrator, installs into
+`%LOCALAPPDATA%\Programs\SteamAchievementCaretaker`, and adds a Start menu shortcut and an
+entry in *Installed apps*. x64 and x86 share that one location, so installing one replaces
+the other. Uninstalling removes only what was installed — your settings, cache and
+like/dislike ratings in `~/.sac` stay put.
+
+### Upgrading from 1.0.0
+
+Nothing to do. Settings, caches and ratings in `~/.sac` are read as they are. If you
+unzipped 1.0.0 somewhere, you can delete that folder once 1.1.0 is running; the installer
+does not look for it.
+
+### New
+
+- **A Windows installer**, `…-setup.exe`, for x64 and x86. Built with NSIS and
+  cross-compiled on Linux, like every other artifact, so the release still needs no Windows
+  machine.
+- **The Windows builds are self-contained**, and the archives are named `…-portable.zip`
+  to say what they are. 1.0.0's zips were framework-dependent and would not start without
+  the .NET 10 Desktop Runtime; the cost of dropping that requirement is about 34 MB per
+  download instead of 12 MB.
+- **Achievement descriptions in the list.** Each row carries the description on one
+  trimmed line under the name, so it can be read without selecting the achievement. Hidden
+  achievements, which have no description until unlocked, keep a single line.
+- **Unlock date column.** Unlocked achievements show the day they were earned, in the same
+  `d MMM yyyy` form as the library. A locked achievement shows nothing; one Steam reports
+  unlocked but without a timestamp shows `—`, and ticking a box you have not committed yet
+  does not invent a date for it.
+
+### Fixed
+
+- **Content view: the Steam column drifted right** and ran into the achievement meter,
+  pushing every column after it out of line with its header. The header and the rows were
+  inset by different amounts; they now agree, and the Steam value is aligned with its
+  heading.
+- **Completion meters were wider than their column.** Avalonia's progress bar has a built-in
+  minimum width of 200, which beat the column width in the Content view and overhung the
+  capsule in the Tiles view. Both meters now fit where they are placed.
+- **The library window could be shrunk until the Name column vanished** and the dislike
+  button was clipped. Its minimum width is now 1000, derived from the fixed columns rather
+  than guessed.
+- **Tiles view: the scrollbar sat away from the window's right edge**, and scrolling with
+  the wheel over the empty space beside the tiles did nothing. The scrollbar is now at the
+  edge, where you expect to find it, and the wheel works anywhere over the grid.
+
+### Verified in this release
+
+| Check | Result |
+|---|---|
+| `dotnet build` on `AnyCPU` and `x86`, warnings as errors | 0 warnings, 0 errors |
+| Both windows constructed and rendered headless after every XAML change | pass |
+| Library window, Tiles and Content, against live Steam (win-x64) | columns aligned with headers; scrollbar at the right edge; Name column kept at minimum width |
+| Achievement editor against live Steam | description line and unlock dates shown |
+| GitHub workflow shell logic run end to end in a container | all five artifacts, correct architectures |
+| Both Windows installers: silent install, run, silent uninstall | installs, opens the library against live Steam, uninstall leaves no files, registry keys or shortcut, and `~/.sac` untouched |
+| Both portable archives unzipped and run | open against live Steam |
+| `packaging/check-version.sh 1.1.0` | tag, both projects, both window titles and these notes agree |
+
+### Known issues
+
+Unchanged from 1.0.0; the list is under that release below. The write path in particular is
+still not re-verified against a live account.
+
+---
+
 ## 1.0.0 — 2026-09-21
 
 The first Caretaker release. It is SAM 8.0 restructured into a single application and

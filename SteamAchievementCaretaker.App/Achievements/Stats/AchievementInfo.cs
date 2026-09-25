@@ -103,5 +103,23 @@ namespace SteamAchievementCaretaker.App.Achievements.Stats
             this.UnlockTime.HasValue == true
                 ? this.UnlockTime.Value.ToString(CultureInfo.CurrentCulture)
                 : "";
+
+        /// <summary>
+        /// The list's date column: the day only, in the same format the library
+        /// uses for its dates. <see cref="UnlockTime"/> is already local time, so
+        /// an unlock late in the evening lands on the right day.
+        /// </summary>
+        /// <remarks>
+        /// Blank for a locked achievement, but a dash for one Steam says is
+        /// unlocked without recording when - old unlocks can have no timestamp,
+        /// and "unlocked, date unknown" is a different answer from "not
+        /// unlocked". Keyed on <see cref="OriginalValue"/>, what Steam reported,
+        /// not <see cref="IsAchieved"/>: a box ticked but not yet committed has
+        /// no date because it has not happened, not because the date was lost.
+        /// </remarks>
+        public string UnlockDateText =>
+            this.UnlockTime.HasValue == true
+                ? this.UnlockTime.Value.ToString("d MMM yyyy", CultureInfo.CurrentCulture)
+                : this.OriginalValue == true ? "—" : "";
     }
 }

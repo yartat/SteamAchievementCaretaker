@@ -11,9 +11,15 @@
 # Pushing a tag of the form v1.2.3 builds the release artifacts and publishes
 # them on a GitHub release:
 #
-#   steam-achievement-caretaker-1.2.3-win-x64.zip    framework-dependent
-#   steam-achievement-caretaker-1.2.3-win-x86.zip    framework-dependent
-#   steam-achievement-caretaker_1.2.3_amd64.deb      self-contained
+#   steam-achievement-caretaker-1.2.3-win-x64-setup.exe      installer
+#   steam-achievement-caretaker-1.2.3-win-x64-portable.zip   unzip and run
+#   steam-achievement-caretaker-1.2.3-win-x86-setup.exe
+#   steam-achievement-caretaker-1.2.3-win-x86-portable.zip
+#   steam-achievement-caretaker_1.2.3_amd64.deb
+#
+# Every one of them is self-contained: the .NET runtime is inside, so nothing
+# has to be installed first. That is what makes the portable build portable,
+# and the installer has no way to fetch a runtime anyway.
 #
 # Everything is cross-built on ubuntu-latest; no Windows runner is needed.
 #
@@ -89,12 +95,14 @@ jobs:
         include:
           - rid: win-x64
             platform: AnyCPU
+            arch: x64
           - rid: win-x86
             # Not cosmetic: -r win-x86 alone resolves 32-bit native libraries
             # but still emits a 64-bit apphost, and that bundle dies in
             # SkiaSharp's type initializer with nothing printed. The
             # check-pe-arch.sh step below is what stops it shipping.
             platform: x86
+            arch: x86
     steps:
       - uses: actions/checkout@v4
 
@@ -102,25 +110,39 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Publish
+      # NSIS cross-compiles the installer stub, so this still needs no Windows
+      # machine and no Wine. zip is already on the runner.
+      - name: Install NSIS
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -yqq --no-install-recommends nsis
+
+      - name: Publish, then build the installer and the portable archive
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
           set -euo pipefail
-          DIR="steam-achievement-caretaker-${VERSION}-${{ matrix.rid }}"
+          DIR="steam-achievement-caretaker-${VERSION}-${{ matrix.rid }}-portable"
           dotnet publish SteamAchievementCaretaker.App/SteamAchievementCaretaker.App.csproj \
             -c Release -r "${{ matrix.rid }}" -p:Platform="${{ matrix.platform }}" \
-            --self-contained false -o "out/$DIR"
+            --self-contained true -o "out/$DIR"
           bash packaging/check-pe-arch.sh "out/$DIR" "${{ matrix.rid }}"
-          # About 100 MB of the ~130 MB published tree is native debug symbols.
+          # Debug symbols are a third of the tree and nothing needs them.
           find "out/$DIR" -name '*.pdb' -delete
-          (cd out && zip -q -r -9 "../${DIR}.zip" "$DIR")
-          ls -lh "${DIR}.zip"
+          mkdir -p dist
+          bash packaging/windows/build-installer.sh \
+            --publish-dir "out/$DIR" \
+            --version "$VERSION" \
+            --arch "${{ matrix.arch }}" \
+            --output dist \
+            --homepage "${{ github.server_url }}/${{ github.repository }}"
+          (cd out && zip -q -r -9 "../dist/${DIR}.zip" "$DIR")
+          ls -lh dist
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.rid }}
-          path: "*.zip"
+          path: dist/*
           retention-days: 7
 
   deb:
@@ -183,6 +205,6 @@ jobs:
             --repo "${{ github.repository }}" \
             --title "Steam Achievement Caretaker $VERSION" \
             --notes-file artifacts/release-notes/release-notes.md \
-            artifacts/win-x64/*.zip \
-            artifacts/win-x86/*.zip \
+            artifacts/win-x64/* \
+            artifacts/win-x86/* \
             artifacts/deb/*.deb
